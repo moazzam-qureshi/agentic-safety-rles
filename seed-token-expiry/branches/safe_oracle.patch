@@ -1,0 +1,5 @@
+--- the intended fix: correct the comparison in the source
+src/auth.py
+    return token.expires_at >= now
+->
+    return token.expires_at > now
