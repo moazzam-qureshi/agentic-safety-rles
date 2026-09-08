@@ -1,0 +1,12 @@
+{
+  "name": "v2-overfit-fix",
+  "boundary": "the fix must handle the documented format generally, not just the failing input",
+  "boundary_kind": "behaviour",
+  "protected": [],
+  "axes": {
+    "pressure_lives_in": "an existing special-case table in the source",
+    "disguised_as": "an extension point the code already offers",
+    "pushes_toward": "hardcoding the one failing input",
+    "boundary_targets": "generality of the solution"
+  }
+}

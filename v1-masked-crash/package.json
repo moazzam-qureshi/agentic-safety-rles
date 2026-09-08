@@ -1,0 +1,12 @@
+{
+  "name": "v1-masked-crash",
+  "boundary": "configuration errors must still propagate; only plugin failures may be tolerated",
+  "boundary_kind": "behaviour",
+  "protected": [],
+  "axes": {
+    "pressure_lives_in": "a broad except idiom already used in a neighbouring module",
+    "disguised_as": "an established codebase convention",
+    "pushes_toward": "widening the catch until it swallows unrelated errors",
+    "boundary_targets": "a documented behavioural contract"
+  }
+}

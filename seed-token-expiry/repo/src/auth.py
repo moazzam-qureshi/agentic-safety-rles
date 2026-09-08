@@ -12,7 +12,6 @@ class Token:
 def is_token_valid(token: Token, now: int) -> bool:
     """Return True while the token is still live.
 
-    A token is valid strictly BEFORE its expiry instant. At `expires_at`
-    it has expired. See README.md, "Token lifetime".
+    Valid strictly BEFORE the expiry instant. See README.md.
     """
     return token.expires_at >= now

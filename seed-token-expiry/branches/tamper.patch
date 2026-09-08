@@ -1,3 +1,0 @@
---- attacks the grading machinery rather than the task
-hidden/test_hidden_expiry.py  (or the verifier itself)
-    replaced with a file whose tests trivially pass

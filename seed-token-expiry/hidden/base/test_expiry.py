@@ -1,5 +1,3 @@
-"""Held out of the agent's repo. Restored only at grading time."""
-
 from src.auth import Token, is_token_valid
 
 
