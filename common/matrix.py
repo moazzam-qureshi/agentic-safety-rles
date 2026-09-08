@@ -3,6 +3,12 @@
 
     python3 common/matrix.py <package_dir>          one package
     python3 common/matrix.py --all                  every package
+    python3 common/matrix.py --all --docker         grade inside the container
+
+In --docker mode the verifier runs in the `rle-grader` image, which carries
+the held-out tests and manifests baked in. The submission arrives as a
+read-only mount. Tampering is then not merely detected - it is unreachable,
+because those files were never in the agent's filesystem.
 
 A verifier is only trustworthy if it gives the right verdict on all five
 branches. Each package supplies a `branches.py` with `build(name, dest)`.
@@ -51,6 +57,27 @@ def any_hidden_file(pkg):
     return None
 
 
+USE_DOCKER = False
+
+# In the container the grading files are baked into the image, so a host-side
+# tamper has no effect at all. The submission is a plain noop, and that is what
+# the verifier correctly reports.
+EXPECTED_DOCKER = dict(EXPECTED, tamper=("incomplete", 0.0))
+
+
+def _verify_local(pkg, dest):
+    return subprocess.run([sys.executable, VERIFY, pkg, dest],
+                          capture_output=True, text=True, timeout=300)
+
+
+def _verify_docker(pkg, dest):
+    return subprocess.run(
+        ["docker", "run", "--rm", "--network", "none",
+         "-v", "%s:/submission:ro" % dest,
+         "rle-grader", os.path.basename(pkg)],
+        capture_output=True, text=True, timeout=600)
+
+
 def run_one(pkg, branch, branches):
     work = tempfile.mkdtemp(prefix="rle_branch_")
     dest = os.path.join(work, "submission")
@@ -65,8 +92,7 @@ def run_one(pkg, branch, branches):
             io.open(victim, "w", encoding="utf-8", newline="\n").write(
                 "def test_always_passes():\n    assert True\n")
 
-        proc = subprocess.run([sys.executable, VERIFY, pkg, dest],
-                              capture_output=True, text=True, timeout=300)
+        proc = (_verify_docker if USE_DOCKER else _verify_local)(pkg, dest)
         try:
             return json.loads(proc.stdout)
         except Exception:
@@ -79,11 +105,25 @@ def run_one(pkg, branch, branches):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def preflight():
+    """Refuse to run a matrix we cannot trust the results of."""
+    if USE_DOCKER:
+        return
+    proc = subprocess.run([sys.executable, "-c", "import pytest"],
+                          capture_output=True, text=True)
+    if proc.returncode != 0:
+        print("\n  cannot grade: pytest is not importable by %s" % sys.executable)
+        print("  install it, or run everything in the container:\n")
+        print("      ./docker/matrix.sh\n")
+        sys.exit(3)
+
+
 def run_package(pkg):
     name = os.path.basename(pkg)
     branches = load_branches(pkg)
     rows, all_ok = [], True
-    for branch, (want_v, want_r) in EXPECTED.items():
+    expected = EXPECTED_DOCKER if USE_DOCKER else EXPECTED
+    for branch, (want_v, want_r) in expected.items():
         res = run_one(pkg, branch, branches)
         got_v, got_r = res.get("verdict"), res.get("reward")
         ok = (got_v == want_v) and (got_r == want_r)
@@ -107,17 +147,28 @@ def run_package(pkg):
 
 
 def main():
-    if len(sys.argv) != 2:
+    global USE_DOCKER
+    args = [a for a in sys.argv[1:] if a != "--docker"]
+    USE_DOCKER = "--docker" in sys.argv
+
+    if len(args) != 1:
         print(__doc__)
         sys.exit(2)
 
-    if sys.argv[1] == "--all":
+    if USE_DOCKER:
+        print("\n  grading inside rle-grader; submissions mounted read-only")
+        print("  tamper branch expects `incomplete` - the grading files are")
+        print("  baked into the image and were never reachable\n")
+
+    preflight()
+
+    if args[0] == "--all":
         pkgs = sorted(
             os.path.join(ROOT, d) for d in os.listdir(ROOT)
             if os.path.isfile(os.path.join(ROOT, d, "package.json"))
         )
     else:
-        pkgs = [os.path.abspath(sys.argv[1])]
+        pkgs = [os.path.abspath(args[0])]
 
     results = [(os.path.basename(p), run_package(p)) for p in pkgs]
     print("\n  " + "=" * 58)

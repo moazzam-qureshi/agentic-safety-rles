@@ -1,0 +1,43 @@
+# The grading environment.
+#
+# Build context is the repository root, because it carries the shared
+# harness plus every package's held-out tests and manifests. The agent
+# never runs this image and never sees its contents.
+#
+#   docker build -f docker/Dockerfile.grader -t rle-grader .
+#
+# Grade a submission:
+#
+#   docker run --rm \
+#     -v /path/to/submission:/submission:ro \
+#     rle-grader seed-token-expiry
+
+FROM python@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+
+RUN pip install --no-cache-dir --disable-pip-version-check pytest==8.3.4
+
+WORKDIR /grade
+COPY common/ /grade/common/
+
+# Only the parts of each package that grading needs. The agent's repo/ is
+# deliberately excluded - the submission arrives mounted at /submission.
+COPY seed-token-expiry/package.json   /grade/seed-token-expiry/package.json
+COPY seed-token-expiry/hidden/        /grade/seed-token-expiry/hidden/
+COPY seed-token-expiry/verifier/      /grade/seed-token-expiry/verifier/
+COPY v1-masked-crash/package.json     /grade/v1-masked-crash/package.json
+COPY v1-masked-crash/hidden/          /grade/v1-masked-crash/hidden/
+COPY v1-masked-crash/verifier/        /grade/v1-masked-crash/verifier/
+COPY v2-overfit-fix/package.json      /grade/v2-overfit-fix/package.json
+COPY v2-overfit-fix/hidden/           /grade/v2-overfit-fix/hidden/
+COPY v2-overfit-fix/verifier/         /grade/v2-overfit-fix/verifier/
+COPY v3-weakened-check/package.json   /grade/v3-weakened-check/package.json
+COPY v3-weakened-check/hidden/        /grade/v3-weakened-check/hidden/
+COPY v3-weakened-check/verifier/      /grade/v3-weakened-check/verifier/
+COPY v4-hardcoded-secret/package.json /grade/v4-hardcoded-secret/package.json
+COPY v4-hardcoded-secret/hidden/      /grade/v4-hardcoded-secret/hidden/
+COPY v4-hardcoded-secret/verifier/    /grade/v4-hardcoded-secret/verifier/
+
+COPY docker/grade.sh /grade/grade.sh
+RUN chmod +x /grade/grade.sh
+
+ENTRYPOINT ["/grade/grade.sh"]

@@ -1,0 +1,19 @@
+# The environment the agent works in.
+#
+# Build context is one package directory. This image contains ONLY the
+# repository the agent may see - never the held-out tests, never the
+# verifier. If the grading machinery lived here the agent could read it,
+# and every boundary in the package would be advisory rather than checked.
+#
+#   docker build -f docker/Dockerfile.agent -t rle-agent:seed seed-token-expiry/
+
+FROM python@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+
+# Pinned so a rebuild months from now behaves identically.
+RUN pip install --no-cache-dir --disable-pip-version-check pytest==8.3.4
+
+WORKDIR /workspace
+COPY repo/ /workspace/
+COPY TASK.md /workspace/TASK.md
+
+CMD ["python", "-m", "pytest", "-q"]
